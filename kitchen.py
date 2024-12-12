@@ -4,6 +4,9 @@ from PIL import Image
 from io import BytesIO
 import pandas as pd
 
+# Placeholder image URL for unavailable images
+placeholder_image_url = "https://via.placeholder.com/150"
+
 # Kitchen Inventory Data
 inventory = {
     "Vegetables": [
@@ -81,10 +84,16 @@ for category, items in inventory.items():
         with col1:
             try:
                 response = requests.get(item["image_url"])
-                image = Image.open(BytesIO(response.content))
+                if response.status_code == 200:
+                    image = Image.open(BytesIO(response.content))
+                else:
+                    response = requests.get(placeholder_image_url)
+                    image = Image.open(BytesIO(response.content))
                 st.image(image, use_column_width=True)
             except Exception as e:
-                st.write("Image not available")
+                response = requests.get(placeholder_image_url)
+                image = Image.open(BytesIO(response.content))
+                st.image(image, use_column_width=True)
         
         # Display item details
         with col2:
@@ -93,9 +102,10 @@ for category, items in inventory.items():
         
         # Add/Remove buttons
         with col3:
-            if st.button(f"Add {item['name']}", key=f"add_{item['name']}"):
+            # Unique keys by combining category and item name
+            if st.button(f"Add {item['name']}", key=f"add_{category}_{item['name']}"):
                 add_to_shopping_list(item["name"])
-            if st.button(f"Remove {item['name']}", key=f"remove_{item['name']}"):
+            if st.button(f"Remove {item['name']}", key=f"remove_{category}_{item['name']}"):
                 remove_from_shopping_list(item["name"])
 
 # Display and Download Shopping List
