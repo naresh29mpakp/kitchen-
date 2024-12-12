@@ -1,13 +1,30 @@
 import streamlit as st
 import pandas as pd
 import os
+import json
 from PIL import Image
 import base64
 
 # Set up directories
 GITHUB_PATH = "https://raw.githubusercontent.com/naresh29mpakp/kitchen-/main/"
 LOCAL_IMAGE_DIR = "images/"
+DATA_FILE = "data.json"
 os.makedirs(LOCAL_IMAGE_DIR, exist_ok=True)
+
+# Load saved data from JSON
+if os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "r") as f:
+        saved_data = json.load(f)
+    categories = saved_data.get("categories", {})
+    products = saved_data.get("products", [])
+else:
+    categories = {}
+    products = []
+
+# Save data to JSON
+def save_data():
+    with open(DATA_FILE, "w") as f:
+        json.dump({"categories": categories, "products": products}, f)
 
 # Helper function to save images locally and simulate upload to GitHub
 def save_image(image_file, filename):
@@ -19,11 +36,7 @@ def save_image(image_file, filename):
 # Page routing
 page = st.sidebar.selectbox("Navigate", ["Product Categories", "Add Categories and Products"])
 
-# Session states for categories and products
-if "categories" not in st.session_state:
-    st.session_state.categories = {}
-if "products" not in st.session_state:
-    st.session_state.products = []
+# Session states for inventory list
 if "inventory_list" not in st.session_state:
     st.session_state.inventory_list = []
 
@@ -33,9 +46,9 @@ if page == "Product Categories":
 
     # Display categories
     st.subheader("Browse Categories")
-    if st.session_state.categories:
+    if categories:
         cols = st.columns(3)
-        for idx, (category, image_url) in enumerate(st.session_state.categories.items()):
+        for idx, (category, image_url) in enumerate(categories.items()):
             with cols[idx % 3]:
                 if st.button(category):
                     st.session_state.selected_category = category
@@ -45,10 +58,10 @@ if page == "Product Categories":
     # Display products in selected category
     if "selected_category" in st.session_state:
         st.subheader(f"Products in {st.session_state.selected_category}")
-        products = [p for p in st.session_state.products if p["category"] == st.session_state.selected_category]
-        if products:
+        category_products = [p for p in products if p["category"] == st.session_state.selected_category]
+        if category_products:
             product_cols = st.columns(3)
-            for idx, product in enumerate(products):
+            for idx, product in enumerate(category_products):
                 with product_cols[idx % 3]:
                     st.image(product["image"], caption=product["name"], width=200)
                     if st.button(f"Add {product['name']} to Inventory", key=f"add_{product['name']}"):
@@ -84,7 +97,8 @@ elif page == "Add Categories and Products":
     if st.button("Add Category"):
         if category_name and category_image:
             saved_url = save_image(category_image, f"category_{category_name}.png")
-            st.session_state.categories[category_name] = saved_url
+            categories[category_name] = saved_url
+            save_data()
             st.success(f"Category '{category_name}' added!")
         else:
             st.error("Please provide both a category name and an image.")
@@ -93,15 +107,16 @@ elif page == "Add Categories and Products":
     st.subheader("Add a New Product")
     product_name = st.text_input("Product Name:", key="product_name")
     product_image = st.file_uploader("Upload Product Image:", type=["png", "jpg", "jpeg"], key="product_image")
-    product_category = st.selectbox("Select Category:", ["Select"] + list(st.session_state.categories.keys()))
+    product_category = st.selectbox("Select Category:", ["Select"] + list(categories.keys()))
     if st.button("Add Product"):
         if product_name and product_image and product_category != "Select":
             saved_url = save_image(product_image, f"product_{product_name}.png")
-            st.session_state.products.append({
+            products.append({
                 "name": product_name,
                 "image": saved_url,
                 "category": product_category
             })
+            save_data()
             st.success(f"Product '{product_name}' added to category '{product_category}'!")
         else:
             st.error("Please fill in all fields to add a product.")
