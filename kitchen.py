@@ -11,7 +11,8 @@ os.makedirs(LOCAL_IMAGE_DIR, exist_ok=True)
 # Helper function to save images locally and simulate upload to GitHub
 def save_image(image_file, filename):
     image_path = os.path.join(LOCAL_IMAGE_DIR, filename)
-    image_file.save(image_path)
+    with open(image_path, "wb") as f:
+        f.write(image_file.getbuffer())
     # Simulate uploading to GitHub (Replace with real upload logic if needed)
     return GITHUB_PATH + filename
 
